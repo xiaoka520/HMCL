@@ -16,17 +16,32 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$package_root/HMCL.iconset" -o "$package_root/HMCL.icns"
 
+# Native launchers do not use java -jar, so forward the JAR's module opens explicitly.
+java_options=(--java-options '--add-modules=javafx.controls,javafx.fxml,javafx.web,javafx.swing')
+while IFS= read -r module; do
+  java_options+=(--java-options "--add-opens=$module=ALL-UNNAMED")
+done < <(python3 - "$jar_path" <<'PY'
+import sys
+import zipfile
+with zipfile.ZipFile(sys.argv[1]) as archive:
+    properties = archive.read('assets/hmcl.properties').decode('utf-8')
+    value = next(line.split('=', 1)[1] for line in properties.splitlines() if line.startswith('hmcl.add-opens='))
+    print('\n'.join(value.split()))
+PY
+)
+version_root="$(awk -F= '$1 == "versionRoot" {print $2}' config/project.properties)"
+
 # Include the JDK's JavaFX modules: the app works without a separately installed JRE.
 jpackage \
   --type app-image \
   --input "$package_root/input" \
   --main-jar "$(basename "$jar_path")" \
   --name HMCL \
-  --app-version "3.17.${GITHUB_RUN_NUMBER:?}" \
+  --app-version "${version_root:?}.${GITHUB_RUN_NUMBER:?}" \
   --vendor xiaoka520 \
   --description 'HMCL unofficial fork with unrestricted downloads' \
   --icon "$package_root/HMCL.icns" \
-  --java-options '--add-modules=javafx.controls,javafx.fxml,javafx.web,javafx.swing' \
+  "${java_options[@]}" \
   --module-path "$JAVA_HOME/jmods" \
   --add-modules ALL-MODULE-PATH \
   --jlink-options '--strip-debug --no-man-pages --no-header-files' \
