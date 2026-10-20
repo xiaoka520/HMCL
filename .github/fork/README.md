@@ -22,6 +22,12 @@ only then fast-forwards this fork's `main`. PR runs verify/build without publish
 All jobs use the same source commit. A push made with `GITHUB_TOKEN` does not
 trigger another push workflow, so builds happen in this workflow itself.
 
+This fork keeps only `Fork Sync and Build`. The upstream Java CI, mirror,
+release, PR labeling and code-check/comment workflows are removed; code-style
+and translation checks run inside the remaining build job. Each sync filters
+out new or modified upstream workflow files and preserves the fork's own
+workflow, so upstream CI changes do not reintroduce extra Actions.
+
 ## Download policy
 
 `RegionUtils.isIsChinaMainlandNetwork()` always returns `false`; `init()` does
@@ -39,8 +45,9 @@ be exactly `iconst_0; ireturn`, and initialization must be just `return`.
 These checks cover the known restriction design, not arbitrary future upstream
 implementations. Review policy checks when upstream changes the design.
 
-Only a merge conflict in `RegionUtils.java` can be resolved automatically, by
-keeping upstream's machine detector and reapplying the policy. Other conflicts,
+Merge conflicts in `RegionUtils.java` are resolved by keeping upstream's machine
+detector and reapplying the download policy. Workflow conflicts are resolved by
+preserving the fork's workflow and removing upstream workflows. Other conflicts,
 policy drift, failed tests/builds or a concurrent update to `main` stop publication.
 No forced updates to `main` are used.
 
@@ -77,10 +84,11 @@ No additional secret is needed to synchronize/build. Optional repository secrets
 integrations; without them, builds succeed but Microsoft login and CurseForge
 API functionality may be unavailable. No upstream credentials are copied.
 
-If upstream changes `.github/workflows`, GitHub may require the optional
-`UPSTREAM_SYNC_TOKEN` secret with repository Contents and Workflows write access
-(classic PAT: `repo` and `workflow`). The default token cannot grant itself
-Workflows permission. Without it, such a push fails and leaves `main` unchanged.
+Upstream workflow definitions are filtered out. If GitHub rejects a publication
+because of workflow-file permissions, the optional `UPSTREAM_SYNC_TOKEN` secret
+can provide repository Contents and Workflows write access (classic PAT: `repo`
+and `workflow`). The default token cannot grant itself Workflows permission;
+a rejected push leaves `main` unchanged.
 This token is used only in the publish job, after builds pass. A PAT-authenticated
 push triggers one additional run; that run finds no new commits and performs no
 further push.
@@ -89,8 +97,9 @@ further push.
 
 ```sh
 python3 .github/fork/download_policy.py --apply
+python3 .github/fork/workflow_policy.py
 python3 .github/fork/test_download_policy.py
 python3 .github/fork/download_policy.py
-./gradlew build checkTranslations --no-daemon --parallel
+./gradlew build checkstyle checkTranslations --no-daemon --parallel
 python3 .github/fork/download_policy.py --jar HMCL/build/libs/HMCL-*.jar
 ```
