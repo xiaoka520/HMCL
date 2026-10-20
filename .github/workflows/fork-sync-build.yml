@@ -2,7 +2,8 @@ name: Fork Sync and Build
 
 on:
   schedule:
-    - cron: '2-59/5 * * * *'
+    # Poll upstream every five minutes, away from the top-of-hour rush.
+    - cron: '3,8,13,18,23,28,33,38,43,48,53,58 * * * *'
   repository_dispatch:
     types: [upstream-main-updated]
   workflow_dispatch:
