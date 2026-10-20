@@ -48,9 +48,25 @@ No forced updates to `main` are used.
 
 Open a successful run's **Artifacts** (retained for 90 days):
 
-* Windows/Linux/universal: `.exe`, `.jar`, `.sh`, `.deb` and SHA-256 files.
-* macOS Intel: `.dmg` with an x86_64 JavaFX runtime.
-* macOS Apple Silicon: `.dmg` with an arm64 JavaFX runtime.
+Each distribution is uploaded as a separate, unzipped file. Both the artifact
+name and downloaded filename use
+`HMCL-unrestricted-<system>-<architecture>-<format>-<commitID>.<extension>`,
+where `commitID` is the full 40-character commit that was built.
+
+| System | Architecture | Format | Filename prefix |
+| --- | --- | --- | --- |
+| macOS / Windows / Linux | universal | JAR | `HMCL-unrestricted-all-universal-jar-` |
+| Windows | read from the EXE PE header (currently x86) | EXE | `HMCL-unrestricted-windows-x86-exe-` |
+| Linux | universal | SH | `HMCL-unrestricted-linux-universal-sh-` |
+| Linux | all (Debian package metadata) | DEB | `HMCL-unrestricted-linux-all-deb-` |
+| macOS Intel | x86_64 | DMG | `HMCL-unrestricted-macos-x86_64-dmg-` |
+| macOS Apple Silicon | arm64 | DMG | `HMCL-unrestricted-macos-arm64-dmg-` |
+
+The same universal JAR is available separately for macOS users who prefer the
+standard launcher over a DMG. DMGs contain architecture-specific JavaFX runtimes.
+SHA-256 manifests are uploaded separately with `sha256` as their format field.
+The Windows architecture describes the native launcher executable, not the Linux
+build runner. Internal source bundles and test reports keep descriptive names.
 
 macOS images are ad-hoc signed, without Apple notarization. Windows/Linux/JAR
 distributions retain upstream Java runtime requirements. These are unofficial

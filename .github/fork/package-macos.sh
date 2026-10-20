@@ -53,6 +53,7 @@ test -x "$app/Contents/MacOS/HMCL"
 codesign --force --deep --sign - "$app"
 codesign --verify --deep --strict "$app"
 mkdir -p dist
-hdiutil create -volname HMCL -srcfolder "$app" -ov -format UDZO "dist/HMCL-${build_sha:0:12}-macos-$arch.dmg"
-hdiutil verify "dist/HMCL-${build_sha:0:12}-macos-$arch.dmg"
-(cd dist && shasum -a 256 "HMCL-${build_sha:0:12}-macos-$arch.dmg" > "HMCL-${build_sha:0:12}-macos-$arch.dmg.sha256")
+artifact_base="HMCL-unrestricted-macos-$arch-dmg-$build_sha"
+hdiutil create -volname HMCL -srcfolder "$app" -ov -format UDZO "dist/$artifact_base.dmg"
+hdiutil verify "dist/$artifact_base.dmg"
+(cd dist && shasum -a 256 "$artifact_base.dmg" > "HMCL-unrestricted-macos-$arch-sha256-$build_sha.sha256")

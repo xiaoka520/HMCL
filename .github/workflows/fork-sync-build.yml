@@ -120,15 +120,41 @@ jobs:
             (cd "$(dirname "$file")" && printf '%s  %s\n' "$(cat "$(basename "$file").sha256")" "$(basename "$file")" | sha256sum -c -)
           done
           python3 .github/fork/download_policy.py --jar HMCL/build/libs/HMCL-*.jar
+          test "$(dpkg-deb --field HMCL/build/libs/HMCL-*.deb Architecture)" = all
+      - name: Name distributions by system, architecture, format and commit
+        env:
+          BUILD_SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          python3 .github/fork/stage-artifacts.py --commit "$BUILD_SHA"
+          (cd dist && sha256sum --check HMCL-unrestricted-all-universal-sha256-*.sha256)
       - uses: actions/upload-artifact@v7
         with:
-          name: HMCL-unrestricted-windows-linux-universal-${{ needs.prepare.outputs.sha }}
-          path: |
-            HMCL/build/libs/HMCL-*.jar
-            HMCL/build/libs/HMCL-*.exe
-            HMCL/build/libs/HMCL-*.sh
-            HMCL/build/libs/HMCL-*.deb
-            HMCL/build/libs/HMCL-*.sha256
+          path: dist/HMCL-unrestricted-all-universal-jar-${{ needs.prepare.outputs.sha }}.jar
+          archive: false
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          path: dist/HMCL-unrestricted-windows-*-exe-${{ needs.prepare.outputs.sha }}.exe
+          archive: false
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          path: dist/HMCL-unrestricted-linux-universal-sh-${{ needs.prepare.outputs.sha }}.sh
+          archive: false
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          path: dist/HMCL-unrestricted-linux-all-deb-${{ needs.prepare.outputs.sha }}.deb
+          archive: false
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          path: dist/HMCL-unrestricted-all-universal-sha256-${{ needs.prepare.outputs.sha }}.sha256
+          archive: false
           retention-days: 90
           if-no-files-found: error
       - uses: actions/upload-artifact@v7
@@ -169,7 +195,7 @@ jobs:
           git checkout --detach "$BUILD_SHA"
       - uses: actions/download-artifact@v8
         with:
-          name: HMCL-unrestricted-windows-linux-universal-${{ needs.prepare.outputs.sha }}
+          name: HMCL-unrestricted-all-universal-jar-${{ needs.prepare.outputs.sha }}.jar
           path: ${{ runner.temp }}/distributions
       - uses: actions/setup-java@v6
         with:
@@ -186,8 +212,14 @@ jobs:
           bash .github/fork/package-macos.sh "$RUNNER_TEMP"/distributions/HMCL-*.jar "$BUILD_SHA" "$PACKAGE_ARCH"
       - uses: actions/upload-artifact@v7
         with:
-          name: HMCL-unrestricted-macos-${{ matrix.arch }}-${{ needs.prepare.outputs.sha }}
-          path: dist/*
+          path: dist/HMCL-unrestricted-macos-${{ matrix.arch }}-dmg-${{ needs.prepare.outputs.sha }}.dmg
+          archive: false
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          path: dist/HMCL-unrestricted-macos-${{ matrix.arch }}-sha256-${{ needs.prepare.outputs.sha }}.sha256
+          archive: false
           retention-days: 90
           if-no-files-found: error
 
