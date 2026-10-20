@@ -1,7 +1,7 @@
 # Unrestricted fork automation
 
 `Fork Sync and Build` checks upstream every five minutes (UTC minutes
-2, 7, 12, ..., 57), on a push/PR to `main`, or manually from the Actions tab.
+3, 8, 13, ..., 58), on a push/PR to `main`, or manually from the Actions tab.
 It follows every commit on upstream `main`, including direct commits and PR
 merges. Scheduled runs and external notifications with no upstream changes skip
 the build. GitHub may delay scheduled workflows; five minutes is its minimum
