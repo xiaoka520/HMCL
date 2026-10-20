@@ -17,36 +17,30 @@
  */
 package org.jackhuang.hmcl.util;
 
-import org.jackhuang.hmcl.task.Schedulers;
-import org.jackhuang.hmcl.util.gson.JsonSerializable;
-import org.jackhuang.hmcl.util.gson.JsonUtils;
 import org.jackhuang.hmcl.util.i18n.LocaleUtils;
-import org.jackhuang.hmcl.util.io.NetworkUtils;
 import org.jackhuang.hmcl.util.platform.NativeUtils;
 import org.jackhuang.hmcl.util.platform.OperatingSystem;
 import org.jackhuang.hmcl.util.platform.windows.Kernel32;
 import org.jackhuang.hmcl.util.platform.windows.WinConstants;
 import org.jetbrains.annotations.NotNullByDefault;
-import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
-import static org.jackhuang.hmcl.util.logging.Logger.LOG;
-
+/// Region information for mirror selection and account defaults, without download restrictions.
 @NotNullByDefault
 public final class RegionUtils {
 
-    /// Pre-check if the network is in China Mainland to avoid blocking the UI thread.
-    public static void init() {
-        if (IS_CHINA_MAINLAND_MACHINE) {
-            Schedulers.io().execute(RegionUtils::isIsChinaMainlandNetwork);
-        }
-    }
-
+    /// Cached machine region; independent of the unrestricted download policy.
     private static final boolean IS_CHINA_MAINLAND_MACHINE = checkMachineIsChinaMainland();
 
+    /// Keeps the upstream startup API without scheduling network requests.
+    public static void init() {
+        // This fork never queries the user's public IP to restrict downloads.
+    }
+
+    /// Detects the machine region using the upstream time zone and system region rules.
     private static boolean checkMachineIsChinaMainland() {
         if ("Asia/Shanghai".equals(ZoneId.systemDefault().getId()))
             return true;
@@ -68,49 +62,17 @@ public final class RegionUtils {
         return false;
     }
 
+    /// Returns the machine region for existing mirror and account behavior.
     public static boolean isIsChinaMainlandMachine() {
         return IS_CHINA_MAINLAND_MACHINE;
     }
 
-    private static volatile @Nullable Boolean isChinaMainlandNetwork;
-
-    private static boolean checkChinaMainlandNetwork() {
-        @NotNullByDefault
-        @JsonSerializable
-        record IpWhoIsResponse(boolean success, String country_code) {
-        }
-
-        try {
-            LOG.info("Fetching network information");
-            IpWhoIsResponse result = JsonUtils.fromNonNullJson(NetworkUtils.doGet("https://ipwho.is"), IpWhoIsResponse.class);
-            return !result.success || "CN".equalsIgnoreCase(result.country_code);
-        } catch (Throwable e) {
-            LOG.warning("Failed to get the network information", e);
-            return true;
-        }
-    }
-
+    /// Always permits downloads, irrespective of machine region, IP, or network availability.
     public static boolean isIsChinaMainlandNetwork() {
-        if (!IS_CHINA_MAINLAND_MACHINE) {
-            return false;
-        }
-
-        Boolean value = isChinaMainlandNetwork;
-        if (value != null)
-            return value;
-
-        synchronized (RegionUtils.class) {
-            value = isChinaMainlandNetwork;
-
-            if (value != null)
-                return value;
-
-            boolean result = checkChinaMainlandNetwork();
-            isChinaMainlandNetwork = result;
-            return result;
-        }
+        return false;
     }
 
+    /// Prevents instantiation of this utility class.
     private RegionUtils() {
     }
 }

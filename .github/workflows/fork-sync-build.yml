@@ -1,0 +1,224 @@
+name: Fork Sync and Build
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-sync-build-${{ github.event_name == 'pull_request' && github.event.number || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.repository == 'xiaoka520/HMCL'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      base: ${{ steps.base.outputs.sha }}
+      upstream: ${{ steps.sync.outputs.upstream_sha }}
+      build: ${{ steps.source.outputs.build }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Record base and preserve fork automation
+        id: base
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          cp -R .github/fork "$RUNNER_TEMP/fork-policy"
+      - name: Synchronize already merged upstream changes
+        id: sync
+        if: github.event_name != 'pull_request'
+        run: bash "$RUNNER_TEMP/fork-policy/sync-upstream.sh"
+      - name: Verify unrestricted download policy
+        run: |
+          python3 "$RUNNER_TEMP/fork-policy/download_policy.py"
+          python3 "$RUNNER_TEMP/fork-policy/test_download_policy.py"
+          git diff --exit-code
+      - name: Prepare exact build commit
+        id: source
+        env:
+          BASE_SHA: ${{ steps.base.outputs.sha }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_EVENT_NAME" == schedule && "$sha" == "$BASE_SHA" ]]; then
+            echo 'build=false' >> "$GITHUB_OUTPUT"
+            echo 'Upstream unchanged; no build needed.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'build=true' >> "$GITHUB_OUTPUT"
+            git bundle create "$RUNNER_TEMP/prepared.bundle" HEAD
+            echo "Building commit: $sha" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: steps.source.outputs.build == 'true'
+        with:
+          name: prepared-source
+          path: ${{ runner.temp }}/prepared.bundle
+          retention-days: 2
+          if-no-files-found: error
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: prepared-source
+          path: ${{ runner.temp }}/source
+      - name: Load prepared commit
+        env:
+          BUILD_SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          git fetch "$RUNNER_TEMP/source/prepared.bundle" HEAD
+          test "$(git rev-parse FETCH_HEAD)" = "$BUILD_SHA"
+          git checkout --detach "$BUILD_SHA"
+      - uses: actions/setup-java@v6
+        with:
+          distribution: liberica
+          java-version: '17'
+          java-package: jdk+fx
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: never
+      - name: Build and test all upstream distributions
+        run: |
+          python3 .github/fork/download_policy.py
+          python3 .github/fork/test_download_policy.py
+          xvfb-run --auto-servernum ./gradlew build checkTranslations --no-daemon --parallel --stacktrace
+        env:
+          GITHUB_SHA: ${{ needs.prepare.outputs.sha }}
+          VERSION_TYPE: unofficial
+          JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+          MICROSOFT_AUTH_ID: ${{ secrets.MICROSOFT_AUTH_ID }}
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+      - name: Verify shipped policy and all four distributions
+        run: |
+          for ext in jar exe sh deb; do
+            files=(HMCL/build/libs/HMCL-*.$ext)
+            test "${#files[@]}" = 1
+            test -s "${files[0]}"
+            file="${files[0]}"
+            (cd "$(dirname "$file")" && printf '%s  %s\n' "$(cat "$(basename "$file").sha256")" "$(basename "$file")" | sha256sum -c -)
+          done
+          python3 .github/fork/download_policy.py --jar HMCL/build/libs/HMCL-*.jar
+      - uses: actions/upload-artifact@v7
+        with:
+          name: HMCL-unrestricted-windows-linux-universal-${{ needs.prepare.outputs.sha }}
+          path: |
+            HMCL/build/libs/HMCL-*.jar
+            HMCL/build/libs/HMCL-*.exe
+            HMCL/build/libs/HMCL-*.sh
+            HMCL/build/libs/HMCL-*.deb
+            HMCL/build/libs/HMCL-*.sha256
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-reports-${{ needs.prepare.outputs.sha }}
+          path: |
+            **/build/reports/tests/
+            **/build/reports/checkstyle/
+          retention-days: 14
+
+  macos:
+    needs: [prepare, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x86_64
+          - runner: macos-15
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: prepared-source
+          path: ${{ runner.temp }}/source
+      - name: Load prepared commit
+        env:
+          BUILD_SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          git fetch "$RUNNER_TEMP/source/prepared.bundle" HEAD
+          test "$(git rev-parse FETCH_HEAD)" = "$BUILD_SHA"
+          git checkout --detach "$BUILD_SHA"
+      - uses: actions/download-artifact@v8
+        with:
+          name: HMCL-unrestricted-windows-linux-universal-${{ needs.prepare.outputs.sha }}
+          path: ${{ runner.temp }}/distributions
+      - uses: actions/setup-java@v6
+        with:
+          distribution: liberica
+          java-version: '17'
+          java-package: jdk+fx
+          architecture: ${{ matrix.arch == 'arm64' && 'aarch64' || 'x64' }}
+      - name: Package macOS app and disk image
+        env:
+          BUILD_SHA: ${{ needs.prepare.outputs.sha }}
+          PACKAGE_ARCH: ${{ matrix.arch }}
+        run: |
+          python3 .github/fork/download_policy.py --jar "$RUNNER_TEMP"/distributions/HMCL-*.jar
+          bash .github/fork/package-macos.sh "$RUNNER_TEMP"/distributions/HMCL-*.jar "$BUILD_SHA" "$PACKAGE_ARCH"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: HMCL-unrestricted-macos-${{ matrix.arch }}-${{ needs.prepare.outputs.sha }}
+          path: dist/*
+          retention-days: 90
+          if-no-files-found: error
+
+  publish:
+    name: Update fork after all builds pass
+    needs: [prepare, build, macos]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        with:
+          name: prepared-source
+          path: ${{ runner.temp }}/source
+      - name: Publish only the tested commit without overwriting concurrent changes
+        env:
+          BUILD_SHA: ${{ needs.prepare.outputs.sha }}
+          BASE_SHA: ${{ needs.prepare.outputs.base }}
+          UPSTREAM_SHA: ${{ needs.prepare.outputs.upstream }}
+        run: |
+          git fetch "$RUNNER_TEMP/source/prepared.bundle" HEAD
+          test "$(git rev-parse FETCH_HEAD)" = "$BUILD_SHA"
+          git merge-base --is-ancestor "$UPSTREAM_SHA" "$BUILD_SHA"
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$BASE_SHA"
+          git checkout --detach "$BUILD_SHA"
+          python3 .github/fork/download_policy.py
+          git push origin HEAD:refs/heads/main
+          echo "Validated fork commit: $BUILD_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Merged upstream commit: $UPSTREAM_SHA" >> "$GITHUB_STEP_SUMMARY"
