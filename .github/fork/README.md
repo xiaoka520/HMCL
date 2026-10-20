@@ -71,7 +71,9 @@ where `commitID` is the full 40-character commit that was built.
 
 The same universal JAR is available separately for macOS users who prefer the
 standard launcher over a DMG. DMGs contain architecture-specific JavaFX runtimes.
-SHA-256 manifests are uploaded separately with `sha256` as their format field.
+No separate checksum files are generated in distribution staging or uploaded as
+artifacts. GitHub provides artifact digests; build inputs and staged copies are
+still verified internally.
 The Windows architecture describes the native launcher executable, not the Linux
 build runner. Internal source bundles and test reports keep descriptive names.
 

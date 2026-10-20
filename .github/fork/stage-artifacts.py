@@ -37,7 +37,6 @@ def stage(source, destination, commit):
         "deb": ("linux", "all"),
     }
     destination.mkdir(parents=True, exist_ok=True)
-    checksums = []
     for extension, (system, architecture) in targets.items():
         name = f"HMCL-unrestricted-{system}-{architecture}-{extension}-{commit}.{extension}"
         target = destination / name
@@ -45,10 +44,7 @@ def stage(source, destination, commit):
         checksum = hashlib.sha256(target.read_bytes()).hexdigest()
         if checksum != hashlib.sha256(files[extension].read_bytes()).hexdigest():
             raise ValueError(f"Staged distribution differs from its source: {name}")
-        checksums.append(f"{checksum}  {name}\n")
         print(name)
-    manifest = destination / f"HMCL-unrestricted-all-universal-sha256-{commit}.sha256"
-    manifest.write_text("".join(checksums), encoding="utf-8")
 
 
 if __name__ == "__main__":

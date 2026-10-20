@@ -56,4 +56,3 @@ mkdir -p dist
 artifact_base="HMCL-unrestricted-macos-$arch-dmg-$build_sha"
 hdiutil create -volname HMCL -srcfolder "$app" -ov -format UDZO "dist/$artifact_base.dmg"
 hdiutil verify "dist/$artifact_base.dmg"
-(cd dist && shasum -a 256 "$artifact_base.dmg" > "HMCL-unrestricted-macos-$arch-sha256-$build_sha.sha256")

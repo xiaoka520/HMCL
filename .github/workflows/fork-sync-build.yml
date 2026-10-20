@@ -127,7 +127,6 @@ jobs:
           BUILD_SHA: ${{ needs.prepare.outputs.sha }}
         run: |
           python3 .github/fork/stage-artifacts.py --commit "$BUILD_SHA"
-          (cd dist && sha256sum --check HMCL-unrestricted-all-universal-sha256-*.sha256)
       - uses: actions/upload-artifact@v7
         with:
           path: dist/HMCL-unrestricted-all-universal-jar-${{ needs.prepare.outputs.sha }}.jar
@@ -149,12 +148,6 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           path: dist/HMCL-unrestricted-linux-all-deb-${{ needs.prepare.outputs.sha }}.deb
-          archive: false
-          retention-days: 90
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v7
-        with:
-          path: dist/HMCL-unrestricted-all-universal-sha256-${{ needs.prepare.outputs.sha }}.sha256
           archive: false
           retention-days: 90
           if-no-files-found: error
@@ -214,12 +207,6 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           path: dist/HMCL-unrestricted-macos-${{ matrix.arch }}-dmg-${{ needs.prepare.outputs.sha }}.dmg
-          archive: false
-          retention-days: 90
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v7
-        with:
-          path: dist/HMCL-unrestricted-macos-${{ matrix.arch }}-sha256-${{ needs.prepare.outputs.sha }}.sha256
           archive: false
           retention-days: 90
           if-no-files-found: error
