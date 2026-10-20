@@ -51,6 +51,7 @@ def render_region(source):
     if declarations - METHODS:
         raise ValueError(f"RegionUtils gained unknown API: {sorted(declarations - METHODS)}")
     machine = method_body(source, "checkMachineIsChinaMainland")
+    machine = re.sub(r"(?<!@Nullable )Kernel32 kernel32", "@Nullable Kernel32 kernel32", machine)
     marker = source.find("package org.jackhuang.hmcl.util;")
     if marker < 0:
         raise ValueError("Unexpected RegionUtils package")
@@ -62,6 +63,7 @@ import org.jackhuang.hmcl.util.platform.OperatingSystem;
 import org.jackhuang.hmcl.util.platform.windows.Kernel32;
 import org.jackhuang.hmcl.util.platform.windows.WinConstants;
 import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.time.ZoneId;

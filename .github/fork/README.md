@@ -50,6 +50,14 @@ No additional secret is needed to synchronize/build. Optional repository secrets
 integrations; without them, builds succeed but Microsoft login and CurseForge
 API functionality may be unavailable. No upstream credentials are copied.
 
+If upstream changes `.github/workflows`, GitHub may require the optional
+`UPSTREAM_SYNC_TOKEN` secret with repository Contents and Workflows write access
+(classic PAT: `repo` and `workflow`). The default token cannot grant itself
+Workflows permission. Without it, such a push fails and leaves `main` unchanged.
+This token is used only in the publish job, after builds pass. A PAT-authenticated
+push triggers one additional run; that run finds no new commits and performs no
+further push.
+
 ## Local checks
 
 ```sh

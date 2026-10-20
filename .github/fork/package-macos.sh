@@ -26,6 +26,7 @@ jpackage \
   --vendor xiaoka520 \
   --description 'HMCL unofficial fork with unrestricted downloads' \
   --icon "$package_root/HMCL.icns" \
+  --java-options '--add-modules=javafx.controls,javafx.fxml,javafx.web,javafx.swing' \
   --module-path "$JAVA_HOME/jmods" \
   --add-modules ALL-MODULE-PATH \
   --jlink-options '--strip-debug --no-man-pages --no-header-files' \

@@ -202,6 +202,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN || github.token }}
       - uses: actions/download-artifact@v8
         with:
           name: prepared-source

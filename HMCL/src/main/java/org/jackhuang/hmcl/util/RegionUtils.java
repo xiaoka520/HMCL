@@ -23,6 +23,7 @@ import org.jackhuang.hmcl.util.platform.OperatingSystem;
 import org.jackhuang.hmcl.util.platform.windows.Kernel32;
 import org.jackhuang.hmcl.util.platform.windows.WinConstants;
 import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.time.ZoneId;
@@ -51,7 +52,7 @@ public final class RegionUtils {
                 return true;
 
             if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS && NativeUtils.USE_JNA) {
-                Kernel32 kernel32 = Kernel32.INSTANCE;
+                @Nullable Kernel32 kernel32 = Kernel32.INSTANCE;
 
                 // https://learn.microsoft.com/windows/win32/intl/table-of-geographical-locations
                 if (kernel32 != null && kernel32.GetUserGeoID(WinConstants.GEOCLASS_NATION) == 45) // China
