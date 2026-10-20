@@ -1,8 +1,19 @@
 # Unrestricted fork automation
 
-`Fork Sync and Build` runs every hour at minute 23 (UTC), on a push/PR to
-`main`, or manually from the Actions tab. Scheduled runs with no upstream
-changes skip the build. GitHub may delay scheduled workflows.
+`Fork Sync and Build` checks upstream every five minutes (UTC minutes
+2, 7, 12, ..., 57), on a push/PR to `main`, or manually from the Actions tab.
+It follows every commit on upstream `main`, including direct commits and PR
+merges. Scheduled runs and external notifications with no upstream changes skip
+the build. GitHub may delay scheduled workflows; five minutes is its minimum
+schedule interval, not a guaranteed maximum synchronization delay.
+
+A push in the upstream repository does not automatically trigger workflows in
+this fork. An authenticated external listener can send a `repository_dispatch`
+event with type `upstream-main-updated` for immediate checking. No upstream
+webhook/listener is configured by this repository; the five-minute schedule is
+the active automatic trigger. Creating a webhook on upstream requires upstream
+owner/admin access. The receiver always fetches upstream `main` itself and does
+not accept source commits or shell commands from the event payload.
 
 The workflow merges **already merged** commits from `HMCL-dev/HMCL:main`.
 It does not merge arbitrary open upstream PRs. It reapplies the download policy,
