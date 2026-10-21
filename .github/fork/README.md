@@ -97,10 +97,15 @@ further push.
 
 ## Local checks
 
+macOS disk-image creation retries only `Resource busy` failures, up to three
+attempts with waits of five and ten seconds. Other creation errors and failed
+image verification still fail the job.
+
 ```sh
 python3 .github/fork/download_policy.py --apply
 python3 .github/fork/workflow_policy.py
 python3 .github/fork/test_download_policy.py
+python3 .github/fork/test_create_dmg.py
 python3 .github/fork/download_policy.py
 ./gradlew build checkstyle checkTranslations --no-daemon --parallel
 python3 .github/fork/download_policy.py --jar HMCL/build/libs/HMCL-*.jar

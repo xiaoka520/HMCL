@@ -54,5 +54,4 @@ codesign --force --deep --sign - "$app"
 codesign --verify --deep --strict "$app"
 mkdir -p dist
 artifact_base="HMCL-unrestricted-macos-$arch-dmg-$build_sha"
-hdiutil create -volname HMCL -srcfolder "$app" -ov -format UDZO "dist/$artifact_base.dmg"
-hdiutil verify "dist/$artifact_base.dmg"
+bash "$(dirname -- "${BASH_SOURCE[0]}")/create-dmg.sh" "$app" "dist/$artifact_base.dmg"

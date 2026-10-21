@@ -203,6 +203,7 @@ jobs:
           BUILD_SHA: ${{ needs.prepare.outputs.sha }}
           PACKAGE_ARCH: ${{ matrix.arch }}
         run: |
+          python3 .github/fork/test_create_dmg.py
           python3 .github/fork/download_policy.py --jar "$RUNNER_TEMP"/distributions/HMCL-*.jar
           bash .github/fork/package-macos.sh "$RUNNER_TEMP"/distributions/HMCL-*.jar "$BUILD_SHA" "$PACKAGE_ARCH"
       - uses: actions/upload-artifact@v7
